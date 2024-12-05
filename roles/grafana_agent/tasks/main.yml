@@ -1,0 +1,37 @@
+---
+- name: Preflight
+  ansible.builtin.include_tasks:
+    file: preflight.yml
+    apply:
+      tags:
+        - grafana_agent_install
+        - grafana_agent_configure
+
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      become: true
+      tags:
+        - grafana_agent_install
+
+- name: Configure
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      become: true
+      tags:
+        - grafana_agent_configure
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Start and enable Grafana Agent
+  become: true
+  ansible.builtin.service:
+    name: grafana-agent{% if grafana_agent_mode == 'flow' %}-flow{% endif %}
+    state: started
+    enabled: true
+  tags:
+    - grafana_agent_install
+    - grafana_agent_configure

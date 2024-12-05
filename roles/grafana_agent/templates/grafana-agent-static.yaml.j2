@@ -1,0 +1,5 @@
+---
+{{ ansible_managed | comment }}
+# For a full configuration reference, see: https://grafana.com/docs/agent/latest/configuration/.
+{# The to_nice_yaml filter behaves strange therefore we first read in as yaml and then print as yaml again #}
+{{ grafana_agent_static_config | from_yaml | to_nice_yaml(sort_keys=False, width=1000,indent=2) }}

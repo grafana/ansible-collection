@@ -1,0 +1,60 @@
+---
+- name: Gather variables for each operating system
+  ansible.builtin.include_vars: "{{ distrovars }}"
+  vars:
+    distrovars: "{{ lookup('first_found', params, errors='ignore') }}"
+    params:
+      skip: true
+      files:
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml"
+        - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower }}.yml"
+        - "{{ ansible_os_family | lower }}-{{ ansible_distribution_major_version | lower }}.yml"
+        - "{{ ansible_distribution | lower }}.yml"
+        - "{{ ansible_os_family | lower }}.yml"
+      paths:
+        - "vars/"
+  tags:
+    - grafana_agent_install
+    - grafana_agent_configure
+
+- name: Install dependencies
+  ansible.builtin.package:
+    name: "{{ grafana_agent_dependencies }}"
+    state: present
+
+- name: Prepare apt
+  when:
+    - "ansible_pkg_mgr == 'apt'"
+    - grafana_agent_manage_repo
+  block:
+    - name: Import Grafana apt gpg key
+      ansible.builtin.get_url:
+        url: "{{ grafana_agent_apt_key }}"
+        dest: /usr/share/keyrings/grafana.key
+        mode: "0644"
+
+    - name: Add Grafana apt repository
+      ansible.builtin.apt_repository:
+        repo: "{{ grafana_agent_apt_repo }}"
+        state: present
+        update_cache: true
+
+- name: Add Grafana yum/dnf repository
+  when:
+    - "ansible_pkg_mgr in ['yum', 'dnf']"
+    - grafana_agent_manage_repo
+  ansible.builtin.yum_repository:
+    name: grafana
+    description: grafana
+    baseurl: "{{ grafana_agent_yum_repo }}"
+    enabled: true
+    gpgkey: "{{ grafana_agent_yum_key | default(omit) }}"
+    sslverify: true
+    repo_gpgcheck: "{{ true if (grafana_agent_yum_key) else omit }}"
+    gpgcheck: "{{ true if (grafana_agent_yum_key) else omit }}"
+
+- name: "Install Grafana Agent"
+  ansible.builtin.package:
+    name: "{{ grafana_agent_package }}"
+    state: "{{ (grafana_agent_version == 'latest') | ternary('latest', 'present') }}"
+  notify: Restart Grafana Agent

@@ -1,0 +1,5 @@
+_grafana_agent_dependencies:
+  - apt-transport-https
+  - adduser
+  - ca-certificates
+  - gnupg2

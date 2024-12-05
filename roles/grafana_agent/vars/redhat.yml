@@ -1,0 +1,4 @@
+---
+# https://unix.stackexchange.com/questions/534463/cant-enable-grafana-on-boot-in-fedora-because-systemd-sysv-install-missing
+grafana_agent_dependencies:
+  - chkconfig

@@ -1,0 +1,19 @@
+---
+- name: Restart Grafana Agent with daemon reload
+  become: true
+  ansible.builtin.systemd:
+    name: grafana-agent{% if grafana_agent_mode == 'flow' %}-flow{% endif %}
+    state: restarted
+    daemon_reload: true
+
+- name: Restart Grafana Agent
+  become: true
+  ansible.builtin.systemd:
+    name: grafana-agent{% if grafana_agent_mode == 'flow' %}-flow{% endif %}
+    state: restarted
+
+- name: Reload Grafana Agent
+  become: true
+  ansible.builtin.systemd:
+    name: grafana-agent{% if grafana_agent_mode == 'flow' %}-flow{% endif %}
+    state: reloaded

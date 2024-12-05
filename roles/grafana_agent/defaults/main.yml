@@ -1,0 +1,72 @@
+---
+grafana_agent_version: latest
+# grafana_agent_mode: "flow"
+grafana_agent_mode: "static"
+grafana_agent_package: "grafana-agent{% if grafana_agent_mode == 'flow' %}-flow{% endif %}{{ (grafana_agent_version != 'latest') | ternary('=' ~ grafana_agent_version, '') }}"
+grafana_agent_manage_repo: true
+grafana_agent_dependencies: []
+
+# Grafana Agent Apt Repository Configuration
+grafana_agent_apt_release_channel: stable
+grafana_agent_apt_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+grafana_agent_apt_repo: "deb [arch={{ grafana_agent_apt_arch }} signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com/ {{ grafana_agent_apt_release_channel }} main"
+grafana_agent_apt_key: "https://apt.grafana.com/gpg.key"
+
+# Grafana Agent Yum Repository Configuration
+grafana_agent_yum_repo: https://rpm.grafana.com
+grafana_agent_yum_key: https://rpm.grafana.com/gpg.key
+
+grafana_agent_user_group: grafana-agent
+
+grafana_agent_static_config:
+  server:
+    log_level: warn
+
+  metrics:
+    global:
+      scrape_interval: 1m
+    wal_directory: '/var/lib/grafana-agent'
+    configs:
+      # Example Prometheus scrape configuration to scrape the agent itself for metrics.
+      # This is not needed if the agent integration is enabled.
+      # - name: agent
+      #   host_filter: false
+      #   scrape_configs:
+      #     - job_name: agent
+      #       static_configs:
+      #         - targets: ['127.0.0.1:9090']
+
+  integrations:
+    agent:
+      enabled: true
+    node_exporter:
+      enabled: true
+      include_exporter_metrics: true
+      disable_collectors:
+        - "mdadm"
+
+grafana_agent_flow_config: |
+  logging {
+      level = "warn"
+  }
+
+  prometheus.exporter.unix "default" {
+      include_exporter_metrics = true
+      disable_collectors       = ["mdadm"]
+  }
+
+  prometheus.scrape "default" {
+      targets = concat(
+        prometheus.exporter.unix.default.targets,
+        [{
+          // Self-collect metrics
+          job         = "agent",
+          __address__ = "127.0.0.1:12345",
+        }],
+      )
+
+      forward_to = [
+      // TODO: components to forward metrics to (like prometheus.remote_write or
+      // prometheus.relabel).
+      ]
+  }

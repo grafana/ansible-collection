@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    grafana_agent_mode: flow
+  roles:
+    - role: grafana_agent
