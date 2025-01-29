@@ -11,22 +11,42 @@
 - name: "Download grafana.net dashboards"
   become: false
   delegate_to: localhost
-  run_once: true
   when:
     - not ansible_check_mode
     - "grafana_dashboards | length > 0"
   block:
+    - name: "Get latest revision id"
+      ansible.builtin.uri:
+        url: "https://grafana.com/api/dashboards/{{ item.dashboard_id }}"
+        method: GET
+        return_content: yes
+      register: __dashboard_info
+      loop: "{{ grafana_dashboards }}"
+      when: item.dashboard_url is not defined
+
+    - name: "Extract revision_id if not defined in grafana_dashboards"
+      ansible.builtin.set_fact:
+        __dashboards_with_revision: >-
+          {{
+            __dashboard_info.results | map(attribute='json.revision')
+              | map('default', 1) | map('community.general.dict_kv', 'revision_id')
+            | zip(grafana_dashboards) | map('combine')
+          }}
+
     - name: "Download grafana dashboard from grafana.net to local directory"
       ansible.builtin.get_url:
-        url: "https://grafana.com/api/dashboards/{{ item.dashboard_id }}/revisions/{{ item.revision_id }}/download"
-        dest: "{{ __tmp_dashboards.path }}/{{ item.dashboard_id }}.json"
+        url: "{{ item.dashboard_url if item.dashboard_url is defined else
+          ('https://grafana.com/api/dashboards/' ~ item.dashboard_id ~
+           '/revisions/' ~ item.revision_id | default(1) ~ '/download') }}"
+        dest: "{{ __tmp_dashboards.path }}/{{ item.dashboard_id ~ '.json'
+          if item.dashboard_id is defined else item.dashboard_url | basename}}"
         mode: "0644"
       register: __download_dashboards
       until: "__download_dashboards is succeeded"
       retries: 5
       delay: 2
       changed_when: false
-      loop: "{{ grafana_dashboards }}"
+      loop: "{{ __dashboards_with_revision }}"
 
     # As noted in [1] an exported dashboard replaces the exporter's datasource
     # name with a representative name, something like 'DS_GRAPHITE'. The name
@@ -62,11 +82,13 @@
 
     - name: "Set the correct data source name in the dashboard"
       ansible.builtin.replace:
-        dest: "{{ __tmp_dashboards.path }}/{{ item.dashboard_id }}.json"
+        dest: "{{ item.dest }}"
         regexp: '"(?:\${)?DS_[A-Z0-9_-]+(?:})?"'
-        replace: '"{{ item.datasource }}"'
+        replace: '"{{ item.item.datasource }}"'
       changed_when: false
-      loop: "{{ grafana_dashboards }}"
+      loop: "{{ __download_dashboards.results }}"
+      loop_control:
+        label: "{{ item.item }}"
 
 - name: "Import grafana dashboards via api"
   community.grafana.grafana_dashboard:
