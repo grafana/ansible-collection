@@ -6,64 +6,56 @@ on:
   schedule:
     - cron: '0 0 * * 0'
   workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - "main"
 env:
   NAMESPACE: grafana
   COLLECTION_NAME: grafana
 
-jobs:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
-  integration:
-    runs-on: ubuntu-20.04
-    name: ${{ matrix.ansible }}-py${{ matrix.python }}
-    strategy:
-      fail-fast: true
-      max-parallel: 1
-      matrix:
-        ansible:
-          - stable-2.11
-          - stable-2.12
-          - stable-2.13
-          - devel
-        python:
-          - '2.7'
-          - '3.5'
-          - '3.6'
-          - '3.7'
-          - '3.8'
-          - '3.9'
-          - '3.10'
-        exclude:
-          - ansible: stable-2.11
-            python: '3.10'
+jobs:
+  ansible-test-sanity:
+    uses: ./.github/workflows/ansible-test-sanity.yml
+    with:
+      ansible-core-versions: '["stable-2.14","stable-2.15","stable-2.16"]'
+
+  discover-ansible-tests:
+    runs-on: ubuntu-latest
+    outputs:
+      molecule-tests: ${{ steps.set-tests.outputs.ansible-test-molecule }}
+      integration-tests: ${{ steps.set-tests.outputs.ansible-test-integration }}
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-        with:
-          path: ansible_collections/${{env.NAMESPACE}}/${{env.COLLECTION_NAME}}
+      - name: Check out codebase
+        uses: actions/checkout@v3
 
-      - name: create integration_config
-        working-directory: ansible_collections/${{env.NAMESPACE}}/${{env.COLLECTION_NAME}}/tests/integration
+      - name: Discover tests
+        id: set-tests
         run: |
-          cat <<EOF > integration_config.yml
-          stack_name: ${{ secrets.ANSIBLE_TEST_STACK_NAME }}
-          org_name: ${{ secrets.ANSIBLE_TEST_ORG_NAME }}
-          grafana_cloud_api_key: ${{ secrets.ANSIBLE_TEST_CLOUD_API_KEY }}
-          grafana_api_key: ${{ secrets.ANSIBLE_TEST_GRAFANA_API_KEY }}
-          test_stack_name: ${{ secrets.ANSIBLE_TEST_CI_STACK }}
-          EOF
+          echo ansible-test-molecule="[`for x in $(find tests/integration/targets -maxdepth 1 -mindepth 1 -type d -iname "molecule-*" -printf "%f\n");
+            do echo '{"test":\"'"${x}"'\","name":\"'"${x#*-}\"'"}'; done | tr '\n' ',' | sed '$s/,$//'`]" >> $GITHUB_OUTPUT
+          echo ansible-test-integration="[`for x in $(find tests/integration/targets -maxdepth 1 -mindepth 1 -type d -not -iname "molecule-*" -not -iname "*_cloud_stack" -printf "%f\n");
+            do echo '{"test":\"'"${x}"'\","name":\"'"${x}\"'"}'; done | tr '\n' ',' | sed '$s/,$//'`]" >> $GITHUB_OUTPUT
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.10'
+  ansible-test-molecule:
+    uses: ./.github/workflows/ansible-test-integration.yml
+    needs: discover-ansible-tests
+    if: needs.discover-ansible-tests.outputs.molecule-tests != '[]'
+    with:
+      targets: ${{ needs.discover-ansible-tests.outputs.molecule-tests }}
+      ansible-core-versions: '["stable-2.14","stable-2.15","stable-2.16"]'
 
-      - name: Install ansible-base (${{ matrix.ansible }})
-        run: pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz --disable-pip-version-check
-
-      - name: Test Modules
-        run: ansible-test integration -v alert_contact_point alert_notification_policy cloud_api_key cloud_plugin cloud_stack dashboard datasource folder --color --retry-on-error --continue-on-error --diff --python ${{ matrix.python }} --coverage --docker
-        working-directory: ./ansible_collections/${{env.NAMESPACE}}/${{env.COLLECTION_NAME}}
-
-      - name: Cooling Period
-        run: sleep 3m
+  ansible-test-integration:
+    uses: ./.github/workflows/ansible-test-integration.yml
+    needs: discover-ansible-tests
+    if: needs.discover-ansible-tests.outputs.integration-tests != '[]'
+    secrets: inherit
+    with:
+      targets: ${{ needs.discover-ansible-tests.outputs.integration-tests }}
+      ansible-core-versions: '["stable-2.14","stable-2.15","stable-2.16"]'
+      target-python-versions: '["2.7","3.6","3.7","3.8","3.9","3.10","3.11"]'

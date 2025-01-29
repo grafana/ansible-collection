@@ -1,0 +1,51 @@
+---
+name: Ansible Integration Test
+on:
+  workflow_call:
+    inputs:
+      targets:
+        required: true
+        type: string
+      ansible-core-versions:
+        required: false
+        default: '["stable-2.14"]'
+        type: string
+      target-python-versions:
+        required: false
+        default: '["default"]'
+        type: string
+      coverage:
+        required: false
+        default: auto
+        type: string
+
+jobs:
+  ansible-test-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        targets: ${{ fromJson(inputs.targets) }}
+        ansible-core-versions: ${{ fromJson(inputs.ansible-core-versions) }}
+        target-python-versions: ${{ fromJson(inputs.target-python-versions) }}
+
+    name: "${{ matrix.targets.name }}-${{ matrix.ansible-core-versions }}-py-${{ matrix.target-python-versions }}"
+    steps:
+      - name: "Perform ${{ matrix.targets.test }} integration test with ansible-test"
+        uses: ansible-community/ansible-test-gh-action@release/v1
+        with:
+          ansible-core-version: ${{ matrix.ansible-core-versions }}
+          target-python-version: ${{ matrix.target-python-versions }}
+          controller-python-version: auto
+          docker-image: "--docker-privileged"  # Workaround because ansible-test action doesn't support setting privileged flag
+          testing-type: integration
+          target: ${{ matrix.targets.test }}
+          coverage: ${{ inputs.coverage }}
+          pre-test-cmd: |-
+            echo -e "org_name: ${{ secrets.ANSIBLE_TEST_ORG_NAME }} \n\
+            grafana_cloud_api_key: ${{ secrets.ANSIBLE_TEST_CLOUD_API_KEY }} \n\
+            grafana_api_key: ${{ secrets.ANSIBLE_TEST_GRAFANA_API_KEY }} \n\
+            grafana_url: ${{ secrets.ANSIBLE_GRAFANA_URL }} \n\
+            test_stack_name: ${{ secrets.ANSIBLE_TEST_CI_STACK }}" > tests/integration/integration_config.yml
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version="0.1.3"
+version="0.1.4"
 src="https://github.com/gardar/ansible-test-molecule/releases/download/$version/ansible-test-molecule.sh"
 
 # shellcheck disable=SC1090
