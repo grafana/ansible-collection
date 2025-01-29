@@ -1,0 +1,60 @@
+---
+- name: Create an User in Grafana
+  grafana.grafana.user:
+    login: "grafana_user"
+    password: "Yeihohghomi2neipuphuakooWeeph3ox"
+    email: "grafana_user@localhost.local"
+    name: "grafana user"
+    grafana_url: "{{ grafana_url }}"
+    admin_name: "admin"
+    admin_password: "admin"
+    state: present
+  register: create_result
+
+- name: Create Check
+  ansible.builtin.assert:
+    that:
+      - create_result.failed == false
+
+- name: Change an User password in Grafana
+  grafana.grafana.user:
+    login: "grafana_user"
+    password: "Yeihohghomi2neipuphuakooWeeph3ox"
+    grafana_url: "{{ grafana_url }}"
+    admin_name: "admin"
+    admin_password: "admin"
+    state: update_password
+  register: update_result
+
+- name: Create Check
+  ansible.builtin.assert:
+    that:
+      - update_result.failed == false
+
+- name: Delete a user
+  grafana.grafana.user:
+    login: "grafana_user"
+    grafana_url: "{{ grafana_url }}"
+    admin_name: "admin"
+    admin_password: "admin"
+    state: absent
+  register: delete_result
+
+- name: Delete Check
+  ansible.builtin.assert:
+    that:
+      - delete_result.failed == false
+
+- name: Delete Idempotency Check
+  grafana.grafana.user:
+    login: "grafana_user"
+    grafana_url: "{{ grafana_url }}"
+    admin_name: "admin"
+    admin_password: "admin"
+    state: absent
+  register: delete_result
+
+- name: Delete Check
+  ansible.builtin.assert:
+    that:
+      - delete_result.failed == false
