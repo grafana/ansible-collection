@@ -33,6 +33,12 @@
         - grafana_datasources
         - grafana_notifications
         - grafana_dashboards
+  tags:
+    - grafana_install
+    - grafana_configure
+    - grafana_datasources
+    - grafana_notifications
+    - grafana_dashboards
 
 - name: Install
   ansible.builtin.include_tasks:
@@ -41,6 +47,8 @@
       become: true
       tags:
         - grafana_install
+  tags:
+    - grafana_install
 
 - name: Configure
   ansible.builtin.include_tasks:
@@ -49,6 +57,8 @@
       become: true
       tags:
         - grafana_configure
+  tags:
+    - grafana_configure
 
 - name: Plugins
   ansible.builtin.include_tasks:
@@ -56,6 +66,8 @@
     apply:
       tags:
         - grafana_configure
+  tags:
+    - grafana_configure
   when: "grafana_plugins != []"
 
 - name: "Restart grafana before configuring datasources and dashboards"
@@ -88,6 +100,9 @@
       tags:
         - grafana_configure
         - grafana_run
+  tags:
+    - grafana_configure
+    - grafana_run
   when: "grafana_api_keys | length > 0"
 
 - name: Datasources
@@ -98,6 +113,10 @@
         - grafana_configure
         - grafana_datasources
         - grafana_run
+  tags:
+    - grafana_configure
+    - grafana_datasources
+    - grafana_run
   when: "grafana_datasources != []"
 
 - name: Notifications
@@ -108,6 +127,10 @@
         - grafana_configure
         - grafana_notifications
         - grafana_run
+  tags:
+    - grafana_configure
+    - grafana_notifications
+    - grafana_run
   when: "grafana_alert_notifications | length > 0 or grafana_alert_resources | length > 0"
 
 - name: Dashboards
@@ -118,6 +141,10 @@
         - grafana_configure
         - grafana_dashboards
         - grafana_run
+  tags:
+    - grafana_configure
+    - grafana_dashboards
+    - grafana_run
   when: "grafana_dashboards | length > 0 or __found_dashboards | length > 0"
   vars:
     __found_dashboards: "{{ lookup('fileglob', grafana_dashboards_dir + '/*.json', wantlist=True) }}"
