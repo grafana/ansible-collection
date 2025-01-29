@@ -11,6 +11,27 @@
     update_cache: true
   when: "(_grafana_dependencies | default())"
 
+- name: "Prepare zypper"
+  when:
+    - "ansible_pkg_mgr == 'zypper'"
+    - "(grafana_manage_repo)"
+  environment: "{{ grafana_environment }}"
+  block:
+    - name: import Grafana RPM Key
+      ansible.builtin.rpm_key:
+        state: present
+        key: "{{ grafana_yum_key }}"
+
+    - name: "Add Grafana zypper repository"
+      community.general.zypper_repository:
+        name: grafana
+        description: grafana
+        repo: "{{ grafana_yum_repo }}"
+        enabled: true
+        disable_gpg_check : "{{ false if (grafana_yum_key) else omit }}"
+        runrefresh: true
+      when: "(not grafana_rhsm_repo)"
+
 - name: "Prepare yum/dnf"
   when:
     - "ansible_facts['pkg_mgr'] in ['yum', 'dnf']"
