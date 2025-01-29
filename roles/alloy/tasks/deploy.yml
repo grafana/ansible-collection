@@ -1,6 +1,6 @@
 ---
 - name: Obtain the latest version from the GitHub repo
-  when: alloy_version == "latest"
+  when: alloy_version == "latest" and alloy_install_type == "url"
   block:
     - name: Scrape Github API endpoint to obtain latest Alloy version
       ansible.builtin.uri:
@@ -40,6 +40,11 @@
   ansible.builtin.include_tasks:
     file: setup-Debian.yml
   when: ansible_facts['os_family'] == 'Debian'
+
+- name: Include SUSE setup
+  ansible.builtin.include_tasks:
+    file: setup-Suse.yml
+  when: ansible_facts['os_family'] == 'Suse'
 
 - name: Alloy systemd override
   when: alloy_systemd_override | length > 0

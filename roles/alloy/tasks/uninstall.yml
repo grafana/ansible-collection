@@ -5,7 +5,7 @@
     state: stopped
   ignore_errors: true
 
-- name: Uninstall Alloy rpm package
+- name: Uninstall Alloy dnf package
   ansible.builtin.dnf:
     name: "alloy"
     state: absent
@@ -18,6 +18,12 @@
     state: absent
     purge: true
   when: ansible_facts['os_family'] == 'Debian'
+
+- name: Uninstall Alloy zypper package
+  community.general.zypper:
+    name: alloy
+    state: absent
+  when: ansible_facts['os_family'] == 'Suse'
 
 - name: Ensure that Alloy firewalld rule is not present - tcp port {{ __alloy_server_http_listen_port }}
   ansible.posix.firewalld:  # noqa ignore-errors
@@ -50,3 +56,23 @@
   ansible.builtin.group:
     name: "alloy"
     state: absent
+
+- name: Remove dnf repository (and clean up left-over metadata)
+  ansible.builtin.yum_repository:
+    name: grafana
+    state: absent
+  notify: dnf-clean-metadata
+  when: ansible_facts['os_family'] in ['RedHat', 'Rocky']
+
+- name: Remove deb repository
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/grafana.list
+    state: absent
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Remove zypper repository
+  community.general.zypper_repository:
+    name: grafana
+    repo: 'https://rpm.grafana.com'
+    state: absent
+  when: ansible_facts['os_family'] == 'Suse'

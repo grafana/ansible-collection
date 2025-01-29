@@ -1,5 +1,4 @@
 ---
 __alloy_env_file: "/etc/sysconfig/alloy"
 __alloy_required_packages:
-  - gpg
-
+  - gpg2

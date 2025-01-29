@@ -8,3 +8,6 @@
     state: restarted
     enabled: true
   when: not ansible_check_mode
+
+- name: dnf-clean-metadata
+  ansible.builtin.command: "dnf clean all"

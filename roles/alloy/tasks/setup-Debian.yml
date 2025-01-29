@@ -1,7 +1,30 @@
 ---
-- name: APT - Install Alloy
+- name: APT - Install from Remote URL
   ansible.builtin.apt:
     deb: "{{ alloy_download_url_deb }}"
     state: present
   notify: restart alloy
-  when: __current_deployed_version.stdout is not defined or alloy_version not in __current_deployed_version.stdout
+  when: (__current_deployed_version.stdout is not defined or alloy_version not in __current_deployed_version.stdout) and alloy_install_type == "url"
+
+- name: Import apt repository key
+  ansible.builtin.get_url:
+    url: "{{ alloy_apt_signing_key_url }}"
+    dest: "/etc/apt/trusted.gpg.d/grafana.asc"
+    mode: '0644'
+    force: true
+  when: alloy_install_type == "repository"
+
+- name: Add grafana repository to sources list
+  ansible.builtin.apt_repository:
+    repo: "{{ alloy_apt_repo }}"
+    state: present
+    filename: grafana
+  when: alloy_install_type == "repository"
+
+- name: APT - Install Alloy from Repository
+  ansible.builtin.apt:
+    name: alloy
+    state: latest
+    update_cache: yes
+  notify: restart alloy
+  when: alloy_install_type == "repository"

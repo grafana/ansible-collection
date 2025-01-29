@@ -1,6 +1,6 @@
 ---
-- name: DNF - Install Alloy from remote URL
-  ansible.builtin.dnf:
+- name: ZYPPER - Install Alloy from remote URL
+  ansible.builtin.zypper:
     name: "{{ alloy_download_url_rpm }}"
     state: present
     disable_gpg_check: true
@@ -20,22 +20,15 @@
     key: "{{ alloy_rpm_signing_key_url }}"
   when: alloy_install_type == "repository"
 
-- name: Add grafana dnf repository
-  ansible.builtin.yum_repository:
+- name: Add grafana zypper repository
+  community.general.zypper_repository:
     name: grafana
-    description: "Grafana Repository"
-    baseurl: "{{ alloy_rpm_repo_url }}"
-    repo_gpgcheck: true
-    enabled: true
-    gpgcheck: true
-    gpgkey: "{{ alloy_rpm_signing_key_url }}"
-    sslverify: true
-    sslcacert: "/etc/pki/tls/certs/ca-bundle.crt"
+    repo: "{{ alloy_rpm_repo_url }}"
+    state: present
   when: alloy_install_type == "repository"
 
-- name: DNF - Install Alloy from Repository
-  ansible.builtin.dnf:
+- name: ZYPPER - Install Alloy from Repository
+  community.general.zypper:
     name: alloy
-    state: latest
-  notify: restart alloy
-  when: alloy_install_type == "repository"
+    state: present
+    update_cache: true

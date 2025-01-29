@@ -5,6 +5,11 @@ alloy_uninstall: false
 alloy_expose_port: false
 alloy_download_url_rpm: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-{{ alloy_version }}-1.{{ __alloy_arch }}.rpm"
 alloy_download_url_deb: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-{{ alloy_version }}-1.{{ __alloy_arch }}.deb"
+alloy_install_type: "url" # url or repository
+alloy_apt_signing_key_url: "https://apt.grafana.com/gpg.key"
+alloy_apt_repo: "deb [signed-by=/etc/apt/trusted.gpg.d/grafana.asc] https://apt.grafana.com stable main"
+alloy_rpm_signing_key_url: "https://rpm.grafana.com/gpg.key"
+alloy_rpm_repo_url: "https://rpm.grafana.com"
 
 alloy_user_groups: []
 # alloy_user_groups:
