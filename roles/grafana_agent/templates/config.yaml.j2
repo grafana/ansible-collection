@@ -22,12 +22,14 @@ metrics:
 logs:
   {{ grafana_agent_logs_config | to_nice_yaml(indent=2,sort_keys=False) | indent(2) }}
 
+{% if grafana_agent_mode == 'static' %}
 #################################################################################################
 #                             Configures traces collection                                      #
 #################################################################################################
 # Docs: https://grafana.com/docs/agent/latest/configuration/traces-config/
 traces:
   {{ grafana_agent_traces_config | to_nice_yaml(indent=2,sort_keys=False) | indent(2) }}
+{% endif %}
 
 #################################################################################################
 #                          Configures integrations for the agent                                #
